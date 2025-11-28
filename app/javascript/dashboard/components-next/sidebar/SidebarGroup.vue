@@ -16,6 +16,8 @@ const props = defineProps({
   activeOn: { type: Array, default: () => [] },
   children: { type: Array, default: undefined },
   getterKeys: { type: Object, default: () => ({}) },
+  onClick: { type: Function, default: null },
+  isExternal: { type: Boolean, default: false },
 });
 
 const {
@@ -108,6 +110,12 @@ const hasActiveChild = computed(() => {
 });
 
 const toggleTrigger = () => {
+  // Handle external links with onClick
+  if (props.isExternal && props.onClick) {
+    props.onClick();
+    return;
+  }
+  
   if (
     hasAccessibleChildren.value &&
     !isExpanded.value &&

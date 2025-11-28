@@ -9,6 +9,7 @@ import { useI18n } from 'vue-i18n';
 import { useStorage } from '@vueuse/core';
 import { useSidebarKeyboardShortcuts } from './useSidebarKeyboardShortcuts';
 import { vOnClickOutside } from '@vueuse/components';
+import axios from 'axios';
 
 import Button from 'dashboard/components-next/button/Button.vue';
 import SidebarGroup from './SidebarGroup.vue';
@@ -41,6 +42,30 @@ const { t } = useI18n();
 const isACustomBrandedInstance = useMapGetter(
   'globalConfig/isACustomBrandedInstance'
 );
+
+// Typebot SSO function
+const openTypebotBuilder = async () => {
+  try {
+    console.log('🤖 Opening Typebot Builder via OAuth...');
+    
+    // NextAuth v5: Trigger OAuth flow by navigating to the provider callback
+    // This will auto-redirect to the OAuth authorization endpoint
+    const callbackUrl = encodeURIComponent('http://builder.localhost/typebots');
+    const oauthUrl = `http://builder.localhost/api/auth/callback/custom-oauth?callbackUrl=${callbackUrl}`;
+    
+    console.log('✅ Redirecting to OAuth URL:', oauthUrl);
+    
+    // Open in new tab - NextAuth will redirect to authorization endpoint
+    window.open(oauthUrl, '_blank');
+    
+  } catch (error) {
+    console.error('❌ Error opening Typebot:', error);
+    
+    // Fallback: open Typebot without SSO
+    console.log('⚠️ Fallback: Opening Typebot without SSO');
+    window.open('http://builder.localhost', '_blank');
+  }
+};
 
 const toggleShortcutModalFn = show => {
   if (show) {
@@ -125,7 +150,7 @@ const newReportRoutes = () => [
 const reportRoutes = computed(() => newReportRoutes());
 
 const menuItems = computed(() => {
-  return [
+  const items = [
     {
       name: 'Inbox',
       label: t('SIDEBAR.INBOX'),
@@ -471,6 +496,13 @@ const menuItems = computed(() => {
       ],
     },
     {
+      name: 'Typebot',
+      label: 'Bot Builder',
+      icon: 'i-lucide-bot',
+      isExternal: true,
+      onClick: () => openTypebotBuilder(),
+    },
+    {
       name: 'Settings',
       label: t('SIDEBAR.SETTINGS'),
       icon: 'i-lucide-bolt',
@@ -580,6 +612,17 @@ const menuItems = computed(() => {
       ],
     },
   ];
+  
+  // Debug: Log menu items to verify Typebot button exists
+  console.log('📋 Menu Items:', items.length, 'items');
+  const typebotItem = items.find(item => item.name === 'Typebot');
+  if (typebotItem) {
+    console.log('✅ Typebot button found in menu:', typebotItem);
+  } else {
+    console.log('❌ Typebot button NOT found in menu');
+  }
+  
+  return items;
 });
 </script>
 
