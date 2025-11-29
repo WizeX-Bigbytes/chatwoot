@@ -32,6 +32,7 @@ module Enterprise::MessageTemplates::HookExecutionService
   end
 
   def should_process_captain_response?
+    # Always process if conversation is pending, message is incoming, and assistant exists
     conversation.pending? && message.incoming? && inbox.captain_assistant.present?
   end
 

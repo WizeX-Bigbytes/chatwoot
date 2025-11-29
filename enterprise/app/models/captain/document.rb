@@ -118,8 +118,8 @@ class Captain::Document < ApplicationRecord
   end
 
   def ensure_within_plan_limit
-    limits = account.usage_limits[:captain][:documents]
-    raise LimitExceededError, I18n.t('captain.documents.limit_exceeded') unless limits[:current_available].positive?
+    # No limit check - unlimited documents allowed
+    true
   end
 
   def validate_pdf_format

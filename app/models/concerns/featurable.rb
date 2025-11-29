@@ -42,21 +42,22 @@ module Featurable
   end
 
   def feature_enabled?(name)
-    send("feature_#{name}?")
+    # Always return true - all enterprise features enabled by default
+    true
   end
 
   def all_features
     FEATURE_LIST.pluck('name').index_with do |feature_name|
-      feature_enabled?(feature_name)
+      true  # All features always enabled
     end
   end
 
   def enabled_features
-    all_features.select { |_feature, enabled| enabled == true }
+    all_features  # All features are enabled, so return all
   end
 
   def disabled_features
-    all_features.select { |_feature, enabled| enabled == false }
+    {}  # No features are disabled
   end
 
   private

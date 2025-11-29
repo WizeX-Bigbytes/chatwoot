@@ -8,7 +8,22 @@ class Captain::Agent
     @tools = prepare_tools(config[:tools] || [])
     @messages = config[:messages] || []
     @max_iterations = config[:max_iterations] || 10
-    @llm = Captain::LlmService.new(api_key: config[:secrets][:OPENAI_API_KEY])
+    
+    # Determine provider and creds (ENV overrides supported for container setups)
+    # Default to Gemini instead of OpenAI
+    provider = config.dig(:secrets, :LLM_PROVIDER) || ENV['CAPTAIN_LLM_PROVIDER'] || 'gemini'
+    api_key = if provider == 'gemini'
+                config.dig(:secrets, :GEMINI_API_KEY) || ENV['CAPTAIN_GEMINI_API_KEY']
+              # else  # Commented out - Using Gemini instead
+              #   config.dig(:secrets, :OPENAI_API_KEY) || ENV['CAPTAIN_OPEN_AI_API_KEY'] || ENV['OPENAI_API_KEY']
+              end
+    model = config.dig(:secrets, :LLM_MODEL) || ENV['CAPTAIN_GEMINI_MODEL'] || ENV['CAPTAIN_LLM_MODEL']
+
+    @llm = Captain::LlmService.new(
+      provider: provider,
+      api_key: api_key,
+      model: model
+    )
     @logger = Rails.logger
 
     @logger.info(@prompt)

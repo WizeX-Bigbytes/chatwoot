@@ -107,6 +107,7 @@ class Account < ApplicationRecord
 
   before_validation :validate_limit_keys
   after_create_commit :notify_creation
+  after_create_commit :auto_enable_enterprise_features
   after_destroy :remove_account_sequences
 
   def agents
@@ -179,6 +180,65 @@ class Account < ApplicationRecord
   def remove_account_sequences
     ActiveRecord::Base.connection.exec_query("drop sequence IF EXISTS camp_dpid_seq_#{id}")
     ActiveRecord::Base.connection.exec_query("drop sequence IF EXISTS conv_dpid_seq_#{id}")
+  end
+  
+  def auto_enable_enterprise_features
+    # Auto-enable all enterprise features for new accounts (always enabled)
+    return unless defined?(AccountConfig)
+    
+    premium_features = %w[
+      agent_bots
+      audit_logs
+      auto_resolve_conversations
+      auto_resolve_stale_conversations
+      campaign_report
+      campaign_team
+      campaigns
+      campaigns_brand_removal
+      campaigns_inbox_targeting
+      canned_responses
+      captain
+      captain_integration
+      captain_integration_v2
+      conversation_assignment_policy
+      custom_roles
+      dashboard_apps
+      disable_branding
+      help_center
+      inbound_emails
+      inbox_auto_assignment
+      inbox_limits
+      inbox_management
+      ip_lookup
+      labels
+      macros
+      priority_management
+      reports
+      response_bot
+      sla
+      team_management
+      voice_recorder
+    ]
+    
+    # Enable all features using the feature flag system
+    begin
+      enable_features!(*premium_features.select { |f| respond_to?("feature_#{f}=") })
+    rescue StandardError => e
+      Rails.logger.error("[AutoEnableEnterprise] Failed to enable feature flags: #{e.message}")
+    end
+    
+    # Also create AccountConfig entries for Captain features
+    premium_features.each do |feature|
+      AccountConfig.find_or_create_by!(account: self, name: feature) do |config|
+        config.value = '1'
+      end
+    rescue StandardError => e
+      Rails.logger.error("[AutoEnableEnterprise] Failed to create config for #{feature}: #{e.message}")
+    end
+    
+    Rails.logger.info("[AutoEnableEnterprise] Enabled #{premium_features.count} features for account ##{id}")
+  rescue StandardError => e
+    Rails.logger.error("[AutoEnableEnterprise] Failed to enable features for account ##{id}: #{e.message}")
   end
 end
 

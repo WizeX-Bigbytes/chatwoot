@@ -6,11 +6,11 @@ module Enterprise::Account::PlanUsageAndLimits
 
   def usage_limits
     {
-      agents: agent_limits.to_i,
-      inboxes: get_limits(:inboxes).to_i,
+      agents: ChatwootApp.max_limit,
+      inboxes: ChatwootApp.max_limit,
       captain: {
-        documents: get_captain_limits(:documents),
-        responses: get_captain_limits(:responses)
+        documents: { total_count: ChatwootApp.max_limit, current_available: ChatwootApp.max_limit, consumed: 0 },
+        responses: { total_count: ChatwootApp.max_limit, current_available: ChatwootApp.max_limit, consumed: 0 }
       }
     }
   end
@@ -33,10 +33,8 @@ module Enterprise::Account::PlanUsageAndLimits
   end
 
   def subscribed_features
-    plan_features = InstallationConfig.find_by(name: 'CHATWOOT_CLOUD_PLAN_FEATURES')&.value
-    return [] if plan_features.blank?
-
-    plan_features[plan_name]
+    # Return all available features - everything is subscribed
+    %w[captain sla custom_roles audit_logs help_center response_bot campaigns macros reports dashboard_apps]
   end
 
   def captain_monthly_limit
@@ -69,26 +67,8 @@ module Enterprise::Account::PlanUsageAndLimits
   end
 
   def default_captain_limits
-    max_limits = { documents: ChatwootApp.max_limit, responses: ChatwootApp.max_limit }.with_indifferent_access
-    zero_limits = { documents: 0, responses: 0 }.with_indifferent_access
-    plan_quota = InstallationConfig.find_by(name: 'CAPTAIN_CLOUD_PLAN_LIMITS')&.value
-
-    # If there are no limits configured, we allow max usage
-    return max_limits if plan_quota.blank?
-
-    # if there is plan_quota configred, but plan_name is not present, we return zero limits
-    return zero_limits if plan_name.blank?
-
-    begin
-      # Now we parse the plan_quota and return the limits for the plan name
-      # but if there's no plan_name present in the plan_quota, we return zero limits
-      plan_quota = JSON.parse(plan_quota) if plan_quota.present?
-      plan_quota[plan_name.downcase] || zero_limits
-    rescue StandardError
-      # if there's any error in parsing the plan_quota, we return max limits
-      # this is to ensure that we don't block the user from using the product
-      max_limits
-    end
+    # Always return max limits - unlimited captain usage
+    { documents: ChatwootApp.max_limit, responses: ChatwootApp.max_limit }.with_indifferent_access
   end
 
   def plan_name
@@ -96,17 +76,11 @@ module Enterprise::Account::PlanUsageAndLimits
   end
 
   def agent_limits
-    subscribed_quantity = custom_attributes['subscribed_quantity']
-    subscribed_quantity || get_limits(:agents)
+    ChatwootApp.max_limit  # Always return unlimited agents
   end
 
   def get_limits(limit_name)
-    config_name = "ACCOUNT_#{limit_name.to_s.upcase}_LIMIT"
-    return self[:limits][limit_name.to_s] if self[:limits][limit_name.to_s].present?
-
-    return GlobalConfig.get(config_name)[config_name] if GlobalConfig.get(config_name)[config_name].present?
-
-    ChatwootApp.max_limit
+    ChatwootApp.max_limit  # Always return unlimited for all limits
   end
 
   def validate_limit_keys

@@ -43,7 +43,13 @@ module Concerns::Agentable
   end
 
   def agent_model
-    InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || OpenAiConstants::DEFAULT_MODEL
+    provider = InstallationConfig.find_by(name: 'CAPTAIN_LLM_PROVIDER')&.value.presence || 'openai'
+    
+    if provider == 'gemini'
+      InstallationConfig.find_by(name: 'CAPTAIN_GEMINI_MODEL')&.value.presence || 'gemini-1.5-pro'
+    else
+      InstallationConfig.find_by(name: 'CAPTAIN_OPEN_AI_MODEL')&.value.presence || OpenAiConstants::DEFAULT_MODEL
+    end
   end
 
   def agent_response_schema

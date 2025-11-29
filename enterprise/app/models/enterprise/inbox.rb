@@ -12,13 +12,13 @@ module Enterprise::Inbox
   end
 
   def captain_active?
-    captain_assistant.present? && more_responses?
+    captain_assistant.present?  # Always active if assistant exists, unlimited responses
   end
 
   private
 
   def more_responses?
-    account.usage_limits[:captain][:responses][:current_available].positive?
+    true  # Always have available responses, no limits
   end
 
   def get_agent_ids_over_assignment_limit(limit)

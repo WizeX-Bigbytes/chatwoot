@@ -15,3 +15,7 @@ vendor/bundle
 .DS_Store
 *.swp
 *~
+CLAUDE.md
+CLAUDE.local.md
+.claude
+.windsurf
