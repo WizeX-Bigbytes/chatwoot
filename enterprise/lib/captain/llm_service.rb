@@ -3,6 +3,7 @@ require 'net/http'
 require 'json'
 
 class Captain::LlmService
+  include Integrations::LlmInstrumentation
   # OPENAI_PROVIDER = 'openai'.freeze  # Commented out - Using Gemini instead
   GEMINI_PROVIDER = 'gemini'.freeze
 
@@ -26,10 +27,11 @@ class Captain::LlmService
 
   def call(messages, functions = [])
     case @provider
-    # when OPENAI_PROVIDER  # Commented out - Using Gemini instead
-    #   call_openai(messages, functions)
     when GEMINI_PROVIDER
-      call_gemini(messages, functions)
+      # Instrument Gemini call for observability
+      instrument_llm_call(instrumentation_params(messages)) do
+        call_gemini(messages, functions)
+      end
     else
       handle_error(StandardError.new("Unsupported provider: #{@provider}"))
     end
@@ -87,6 +89,19 @@ class Captain::LlmService
     @logger.info("Gemini API response (#{response.code}): #{response.body}")
 
     handle_gemini_response(JSON.parse(response.body))
+  end
+
+  def instrumentation_params(messages)
+    {
+      span_name: 'llm.captain',
+      account_id: nil, # Can be populated by caller if needed
+      conversation_id: nil,
+      feature_name: 'captain',
+      model: @model,
+      messages: messages.map { |m| { 'role' => m[:role], 'content' => m[:content] } },
+      temperature: 0.7,
+      provider: 'gemini'
+    }
   end
 
   def convert_messages_to_gemini(messages)

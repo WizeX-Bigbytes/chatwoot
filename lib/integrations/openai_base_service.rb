@@ -105,7 +105,8 @@ class Integrations::OpenaiBaseService
       feature_name: event_name,
       model: parsed_body['model'],
       messages: parsed_body['messages'],
-      temperature: parsed_body['temperature']
+      temperature: parsed_body['temperature'],
+      provider: 'openai'
     }
   end
 

@@ -55,7 +55,8 @@ module Integrations::LlmInstrumentation
   end
 
   def set_request_attributes(span, params)
-    span.set_attribute(ATTR_GEN_AI_PROVIDER, 'openai')
+    # Dynamically set provider; default to 'openai' if not supplied
+    span.set_attribute(ATTR_GEN_AI_PROVIDER, params[:provider] || 'openai')
     span.set_attribute(ATTR_GEN_AI_REQUEST_MODEL, params[:model])
     span.set_attribute(ATTR_GEN_AI_REQUEST_TEMPERATURE, params[:temperature]) if params[:temperature]
   end
