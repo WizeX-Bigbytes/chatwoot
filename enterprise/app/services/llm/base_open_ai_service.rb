@@ -37,6 +37,7 @@ class Llm::BaseOpenAiService
   def initialize_gemini
     @api_key = ENV['CAPTAIN_GEMINI_API_KEY'].presence || InstallationConfig.find_by!(name: 'CAPTAIN_GEMINI_API_KEY').value
     setup_gemini_model
+    @client = Agents::Chat.new
   end
 
   # Commented out - Using Gemini instead
