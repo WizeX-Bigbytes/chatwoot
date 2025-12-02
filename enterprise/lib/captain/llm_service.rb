@@ -21,7 +21,7 @@ class Captain::LlmService
     #   )
     #   @model ||= 'gpt-4o'
     when GEMINI_PROVIDER
-      @model ||= 'gemini-2.0-flash'  # Updated to match Google AI Studio
+      @model ||= 'gemini-2.5-flash'  # Updated to match Google AI Studio
     end
   end
 
@@ -54,7 +54,7 @@ class Captain::LlmService
   #   handle_openai_response(response)
   # end
   def call_gemini(messages, functions)
-    # Using Google AI Studio API format: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
+    # Using Google AI Studio API format: https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
     uri = URI("https://generativelanguage.googleapis.com/v1beta/models/#{@model}:generateContent")
     
     gemini_messages = convert_messages_to_gemini(messages)
