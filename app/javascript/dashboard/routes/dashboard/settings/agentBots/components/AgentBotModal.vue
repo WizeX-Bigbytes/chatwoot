@@ -280,7 +280,9 @@ const saveBotConfiguration = async () => {
     return;
   }
 
-  if (!createdBotId.value) {
+  // Determine bot id: prefer createdBotId (creation flow), fallback to selectedBot.id (edit flow)
+  const botIdToSave = createdBotId.value || (props.selectedBot && props.selectedBot.id);
+  if (!botIdToSave) {
     useAlert('Missing bot ID');
     return;
   }
@@ -299,7 +301,7 @@ const saveBotConfiguration = async () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        chatwoot_bot_id: createdBotId.value,
+        chatwoot_bot_id: botIdToSave,
         typebot_id: formState.typebotId.trim(),
       }),
     });
@@ -334,6 +336,9 @@ const initializeForm = () => {
     formState.botDescription = description || '';
     formState.botUrl = botUrl || botConfig?.webhook_url || '';
     formState.botAvatarUrl = thumbnail || '';
+
+    // Prefill Typebot ID when editing
+    formState.typebotId = props.selectedBot?.typebot_id || botConfig?.typebot_id || '';
 
     if (botAccessToken && props.type === MODAL_TYPES.EDIT) {
       accessToken.value = botAccessToken;
@@ -443,8 +448,8 @@ defineExpose({ dialogRef });
           {{ $t('AGENT_BOTS.ACCESS_TOKEN.TITLE') }}
         </label>
         
-        <!-- Typebot ID Input (shown when access token is displayed after creation) -->
-        <div v-if="showAccessToken && type === MODAL_TYPES.CREATE" class="mb-4">
+        <!-- Typebot ID Input (shown when access token is displayed after creation OR when editing) -->
+        <div v-if="(showAccessToken && type === MODAL_TYPES.CREATE) || type === MODAL_TYPES.EDIT" class="mb-4">
           <Input
             id="typebot-id"
             v-model="formState.typebotId"
@@ -504,6 +509,14 @@ defineExpose({ dialogRef });
           v-else-if="type === MODAL_TYPES.CREATE"
           type="submit"
           data-testid="label-save-config"
+          label="Save Configuration"
+          :is-loading="isSavingConfig"
+          :disabled="!formState.typebotId || !formState.typebotId.trim()"
+        />
+        <!-- Save Typebot mapping when editing existing bot -->
+        <NextButton
+          v-if="type === MODAL_TYPES.EDIT"
+          @click="saveBotConfiguration"
           label="Save Configuration"
           :is-loading="isSavingConfig"
           :disabled="!formState.typebotId || !formState.typebotId.trim()"
