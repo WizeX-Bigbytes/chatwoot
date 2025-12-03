@@ -290,33 +290,53 @@ const saveBotConfiguration = async () => {
   isSavingConfig.value = true;
 
   try {
+    // DEBUG: log start
+    console.debug('[AgentBotModal] saveBotConfiguration start', {
+      botIdToSave,
+      typebotId: formState.typebotId,
+    });
+    // show a quick UI hint that saving started
+    useAlert('Saving bot configuration...', 'info');
     // Call backend API to save the typebot_id to Chatwoot's agent_bots table
     const backendUrl = window.location.hostname === 'localhost' || window.location.hostname.includes('localhost')
       ? 'http://localhost:5000'
       : 'https://wizex.tech';
     
+    const payload = {
+      chatwoot_bot_id: botIdToSave,
+      typebot_id: formState.typebotId.trim(),
+    };
+
+    console.debug('[AgentBotModal] POST payload', payload);
+
     const response = await fetch(`${backendUrl}/api/webhooks/bot-config`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        chatwoot_bot_id: botIdToSave,
-        typebot_id: formState.typebotId.trim(),
-      }),
+      body: JSON.stringify(payload),
     });
 
-    const result = await response.json();
+    let result = null;
+    try {
+      result = await response.json();
+    } catch (e) {
+      console.error('[AgentBotModal] Failed to parse JSON response', e);
+    }
 
-    if (response.ok && result.success) {
+    console.debug('[AgentBotModal] response', { status: response.status, ok: response.ok, result });
+
+    if (response.ok && result && result.success) {
       useAlert('Bot configuration saved successfully! You can now assign this bot to an inbox.');
       dialogRef.value.close();
     } else {
-      useAlert(result.error || 'Failed to save bot configuration');
+      const errMsg = (result && (result.error || result.message)) || `Failed to save bot configuration (status ${response.status})`;
+      console.error('[AgentBotModal] save failed', { status: response.status, result });
+      useAlert(errMsg);
     }
   } catch (error) {
-    console.error('Error saving bot configuration:', error);
-    useAlert('Failed to save bot configuration. Please try again.');
+    console.error('[AgentBotModal] Error saving bot configuration:', error);
+    useAlert(`Failed to save bot configuration. ${error.message || ''}`);
   } finally {
     isSavingConfig.value = false;
   }
