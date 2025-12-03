@@ -358,6 +358,7 @@ const saveBotConfiguration = async () => {
 
 const initializeForm = () => {
   if (props.selectedBot && Object.keys(props.selectedBot).length) {
+    console.log('[AgentBotModal] Initializing form with selectedBot:', props.selectedBot);
     const {
       name,
       description,
@@ -373,6 +374,7 @@ const initializeForm = () => {
 
     // Prefill Typebot ID when editing
     formState.typebotId = props.selectedBot?.typebot_id || botConfig?.typebot_id || '';
+    console.log('[AgentBotModal] Set typebotId to:', formState.typebotId);
 
     if (botAccessToken && props.type === MODAL_TYPES.EDIT) {
       accessToken.value = botAccessToken;
@@ -474,6 +476,34 @@ defineExpose({ dialogRef });
         />
       </div>
 
+      <!-- Typebot ID Field - shown in edit mode or after bot creation -->
+      <div v-if="showAccessTokenInput" class="mb-4">
+        <Input
+          id="typebot-id"
+          v-model="formState.typebotId"
+          label="Typebot ID"
+          placeholder="e.g., lead-generation-x1xxa2r"
+          message="Copy this from your Typebot publish page"
+          message-type="info"
+          @blur="v$.typebotId.$touch()"
+        />
+        <!-- Info box only shown after bot creation in create flow -->
+        <div v-if="showAccessToken && type === MODAL_TYPES.CREATE && createdBotId" class="mt-3 p-3 bg-n-slate-2 rounded-md">
+          <p class="text-sm text-n-slate-11 mb-2">
+            <strong>📋 Setup Complete:</strong>
+          </p>
+          <p class="text-xs text-n-slate-11 mb-1">
+            ✅ Bot Created (ID: <code class="px-1 py-0.5 bg-n-slate-3 rounded">{{ createdBotId }}</code>)
+          </p>
+          <p class="text-xs text-n-slate-11 mb-1">
+            ✅ Webhook URL: <code class="px-1 py-0.5 bg-n-slate-3 rounded text-xs">{{ formState.botUrl }}</code>
+          </p>
+          <p class="text-xs text-n-slate-11 mt-3">
+            <strong>📝 Next:</strong> Enter your Typebot ID and click "Save Configuration" to link this bot to your Typebot flow.
+          </p>
+        </div>
+      </div>
+
       <div v-if="showAccessTokenInput" class="flex flex-col gap-1">
         <label
           v-if="type === MODAL_TYPES.EDIT"
@@ -481,34 +511,6 @@ defineExpose({ dialogRef });
         >
           {{ $t('AGENT_BOTS.ACCESS_TOKEN.TITLE') }}
         </label>
-        
-        <!-- Typebot ID Input - ALWAYS shown in edit mode and after bot creation -->
-        <div class="mb-4">
-          <Input
-            id="typebot-id"
-            v-model="formState.typebotId"
-            label="Typebot ID"
-            placeholder="e.g., lead-generation-x1xxa2r"
-            message="Copy this from your Typebot publish page"
-            message-type="info"
-            @blur="v$.typebotId.$touch()"
-          />
-          <!-- Info box only shown after bot creation in create flow -->
-          <div v-if="showAccessToken && type === MODAL_TYPES.CREATE && createdBotId" class="mt-3 p-3 bg-n-slate-2 rounded-md">
-            <p class="text-sm text-n-slate-11 mb-2">
-              <strong>📋 Setup Complete:</strong>
-            </p>
-            <p class="text-xs text-n-slate-11 mb-1">
-              ✅ Bot Created (ID: <code class="px-1 py-0.5 bg-n-slate-3 rounded">{{ createdBotId }}</code>)
-            </p>
-            <p class="text-xs text-n-slate-11 mb-1">
-              ✅ Webhook URL: <code class="px-1 py-0.5 bg-n-slate-3 rounded text-xs">{{ formState.botUrl }}</code>
-            </p>
-            <p class="text-xs text-n-slate-11 mt-3">
-              <strong>📝 Next:</strong> Enter your Typebot ID and click "Save Configuration" to link this bot to your Typebot flow.
-            </p>
-          </div>
-        </div>
 
         <AccessToken
           v-if="type === MODAL_TYPES.EDIT"
