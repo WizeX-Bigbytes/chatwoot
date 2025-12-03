@@ -275,7 +275,10 @@ const updateBotWebhookUrl = async (botId, newUrl) => {
  * Save bot configuration to backend (Typebot ID + Access Token mapping)
  */
 const saveBotConfiguration = async () => {
+  console.log('[AgentBotModal] saveBotConfiguration called - BUTTON CLICKED!');
+  
   if (!formState.typebotId || !formState.typebotId.trim()) {
+    console.warn('[AgentBotModal] Validation failed: typebotId empty');
     useAlert('Please enter a Typebot ID');
     return;
   }
@@ -283,10 +286,12 @@ const saveBotConfiguration = async () => {
   // Determine bot id: prefer createdBotId (creation flow), fallback to selectedBot.id (edit flow)
   const botIdToSave = createdBotId.value || (props.selectedBot && props.selectedBot.id);
   if (!botIdToSave) {
+    console.warn('[AgentBotModal] Validation failed: missing bot ID');
     useAlert('Missing bot ID');
     return;
   }
 
+  console.log('[AgentBotModal] Validation passed, setting isSavingConfig=true');
   isSavingConfig.value = true;
 
   try {
