@@ -264,7 +264,7 @@ const updateBotWebhookUrl = async (botId, newUrl) => {
         bot_type: 'webhook',
       },
     });
-    console.log(`✅ Updated webhook URL to: ${newUrl}`);
+    console.log(`✅ Updated webhook URL and test to: ${newUrl}`);
   } catch (error) {
     console.error('Failed to update webhook URL:', error);
     // Don't show error to user as bot is already created
