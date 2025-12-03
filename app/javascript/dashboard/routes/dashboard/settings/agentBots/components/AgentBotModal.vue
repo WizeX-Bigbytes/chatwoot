@@ -473,18 +473,19 @@ defineExpose({ dialogRef });
           {{ $t('AGENT_BOTS.ACCESS_TOKEN.TITLE') }}
         </label>
         
-        <!-- Typebot ID Input (shown when access token is displayed after creation OR when editing) -->
-        <div v-if="(showAccessToken && type === MODAL_TYPES.CREATE) || type === MODAL_TYPES.EDIT" class="mb-4">
+        <!-- Typebot ID Input - ALWAYS shown in edit mode and after bot creation -->
+        <div class="mb-4">
           <Input
             id="typebot-id"
             v-model="formState.typebotId"
             label="Typebot ID"
             placeholder="e.g., lead-generation-x1xxa2r"
-            :message="v$.typebotId.$error ? 'Typebot ID is required to save configuration' : 'Copy this from your Typebot publish page'"
-            :message-type="v$.typebotId.$error ? 'error' : 'info'"
+            message="Copy this from your Typebot publish page"
+            message-type="info"
             @blur="v$.typebotId.$touch()"
           />
-          <div class="mt-3 p-3 bg-n-slate-2 rounded-md">
+          <!-- Info box only shown after bot creation in create flow -->
+          <div v-if="showAccessToken && type === MODAL_TYPES.CREATE && createdBotId" class="mt-3 p-3 bg-n-slate-2 rounded-md">
             <p class="text-sm text-n-slate-11 mb-2">
               <strong>📋 Setup Complete:</strong>
             </p>
@@ -530,18 +531,11 @@ defineExpose({ dialogRef });
           :is-loading="isLoading"
           :disabled="v$.$invalid"
         />
+        <!-- Save Configuration button (shown after bot creation or in edit mode) -->
         <NextButton
-          v-else-if="type === MODAL_TYPES.CREATE"
-          type="submit"
-          data-testid="label-save-config"
-          label="Save Configuration"
-          :is-loading="isSavingConfig"
-          :disabled="!formState.typebotId || !formState.typebotId.trim()"
-        />
-        <!-- Save Typebot mapping when editing existing bot -->
-        <NextButton
-          v-if="type === MODAL_TYPES.EDIT"
+          v-else-if="showAccessToken || type === MODAL_TYPES.EDIT"
           @click="saveBotConfiguration"
+          data-testid="label-save-config"
           label="Save Configuration"
           :is-loading="isSavingConfig"
           :disabled="!formState.typebotId || !formState.typebotId.trim()"
