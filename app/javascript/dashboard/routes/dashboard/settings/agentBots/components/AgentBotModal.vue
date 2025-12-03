@@ -236,12 +236,12 @@ const handleSubmit = async () => {
       } else {
         accessToken.value = '';
         dialogRef.value.close();
+        resetForm();
       }
     } else {
       dialogRef.value.close();
+      resetForm();
     }
-
-    resetForm();
   } catch (error) {
     const errorKey = isCreate
       ? t('AGENT_BOTS.ADD.API.ERROR_MESSAGE')
@@ -276,6 +276,9 @@ const updateBotWebhookUrl = async (botId, newUrl) => {
  */
 const saveBotConfiguration = async () => {
   console.log('[AgentBotModal] saveBotConfiguration called - BUTTON CLICKED!');
+  console.log('[AgentBotModal] props.selectedBot:', props.selectedBot);
+  console.log('[AgentBotModal] createdBotId.value:', createdBotId.value);
+  console.log('[AgentBotModal] type:', props.type);
   
   if (!formState.typebotId || !formState.typebotId.trim()) {
     console.warn('[AgentBotModal] Validation failed: typebotId empty');
@@ -286,7 +289,12 @@ const saveBotConfiguration = async () => {
   // Determine bot id: prefer createdBotId (creation flow), fallback to selectedBot.id (edit flow)
   const botIdToSave = createdBotId.value || (props.selectedBot && props.selectedBot.id);
   if (!botIdToSave) {
-    console.warn('[AgentBotModal] Validation failed: missing bot ID');
+    console.warn('[AgentBotModal] Validation failed: missing bot ID', {
+      createdBotId: createdBotId.value,
+      selectedBot: props.selectedBot,
+      hasSelectedBot: !!props.selectedBot,
+      selectedBotId: props.selectedBot?.id
+    });
     useAlert('Missing bot ID');
     return;
   }
@@ -333,6 +341,7 @@ const saveBotConfiguration = async () => {
 
     if (response.ok && result && result.success) {
       useAlert('Bot configuration saved successfully! You can now assign this bot to an inbox.');
+      resetForm();
       dialogRef.value.close();
     } else {
       const errMsg = (result && (result.error || result.message)) || `Failed to save bot configuration (status ${response.status})`;
