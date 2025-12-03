@@ -43,10 +43,13 @@ const formState = reactive({
   botUrl: '',
   botAvatar: null,
   botAvatarUrl: '',
+  typebotId: '', // Add Typebot ID field
 });
 
 const [showAccessToken, toggleAccessToken] = useToggle();
 const accessToken = ref('');
+const createdBotId = ref(null); // Store bot ID after creation
+const isSavingConfig = ref(false); // Loading state for config save
 
 const v$ = useVuelidate(
   {
@@ -66,6 +69,19 @@ const v$ = useVuelidate(
         url
       ),
     },
+    typebotId: {
+      // Required only when saving configuration after bot creation
+      required: helpers.withMessage(
+        () => 'Typebot ID is required',
+        (value) => {
+          // Only validate if we're in the access token screen
+          if (showAccessToken.value) {
+            return !!value && value.trim().length > 0;
+          }
+          return true;
+        }
+      ),
+    },
   },
   formState
 );
@@ -78,7 +94,9 @@ const isLoading = computed(() =>
 
 const dialogTitle = computed(() => {
   if (showAccessToken.value) {
-    return t('AGENT_BOTS.ACCESS_TOKEN.TITLE');
+    return props.type === MODAL_TYPES.CREATE
+      ? 'Configure Bot - Typebot Integration'
+      : t('AGENT_BOTS.ACCESS_TOKEN.TITLE');
   }
 
   return props.type === MODAL_TYPES.CREATE
@@ -88,7 +106,9 @@ const dialogTitle = computed(() => {
 
 const dialogDescription = computed(() => {
   if (showAccessToken.value) {
-    return t('AGENT_BOTS.ACCESS_TOKEN.DESCRIPTION');
+    return props.type === MODAL_TYPES.CREATE
+      ? 'Enter your Typebot ID to complete the bot configuration. This will link your Chatwoot bot to your Typebot flow.'
+      : t('AGENT_BOTS.ACCESS_TOKEN.DESCRIPTION');
   }
   return '';
 });
@@ -121,8 +141,10 @@ const resetForm = () => {
     botUrl: '',
     botAvatar: null,
     botAvatarUrl: '',
+    typebotId: '',
   });
   v$.value.$reset();
+  createdBotId.value = null;
 };
 
 const handleImageUpload = ({ file, url: avatarUrl }) => {
@@ -152,7 +174,12 @@ const handleAvatarDelete = async () => {
 const handleSubmit = async () => {
   v$.value.$touch();
   if (v$.value.$invalid) return;
-  if (showAccessToken.value) return;
+
+  // If showing access token, save the configuration
+  if (showAccessToken.value) {
+    await saveBotConfiguration();
+    return;
+  }
 
   const botData = {
     name: formState.botName,
@@ -185,6 +212,26 @@ const handleSubmit = async () => {
 
       if (id && responseAccessToken) {
         accessToken.value = responseAccessToken;
+        createdBotId.value = id;
+        
+        // Auto-update webhook URL with bot ID
+        // If user entered URL without bot ID, append it
+        const webhookBaseUrl = formState.botUrl.replace(/\/$/, ''); // Remove trailing slash
+        const hasPlaceholder = webhookBaseUrl.includes('{botId}');
+        const hasBotIdParam = /\/\d+$/.test(webhookBaseUrl); // Check if already has numeric ID at end
+        
+        if (hasPlaceholder) {
+          // Replace {botId} placeholder with actual bot ID
+          const updatedUrl = webhookBaseUrl.replace('{botId}', id);
+          await updateBotWebhookUrl(id, updatedUrl);
+          formState.botUrl = updatedUrl;
+        } else if (!hasBotIdParam) {
+          // Append bot ID to URL if not already there
+          const updatedUrl = `${webhookBaseUrl}/${id}`;
+          await updateBotWebhookUrl(id, updatedUrl);
+          formState.botUrl = updatedUrl;
+        }
+        
         toggleAccessToken(true);
       } else {
         accessToken.value = '';
@@ -200,6 +247,76 @@ const handleSubmit = async () => {
       ? t('AGENT_BOTS.ADD.API.ERROR_MESSAGE')
       : t('AGENT_BOTS.EDIT.API.ERROR_MESSAGE');
     useAlert(errorKey);
+  }
+};
+
+/**
+ * Update bot webhook URL with actual bot ID
+ */
+const updateBotWebhookUrl = async (botId, newUrl) => {
+  try {
+    await store.dispatch('agentBots/update', {
+      id: botId,
+      data: {
+        name: formState.botName,
+        description: formState.botDescription,
+        outgoing_url: newUrl,
+        bot_type: 'webhook',
+      },
+    });
+    console.log(`✅ Updated webhook URL to: ${newUrl}`);
+  } catch (error) {
+    console.error('Failed to update webhook URL:', error);
+    // Don't show error to user as bot is already created
+  }
+};
+
+/**
+ * Save bot configuration to backend (Typebot ID + Access Token mapping)
+ */
+const saveBotConfiguration = async () => {
+  if (!formState.typebotId || !formState.typebotId.trim()) {
+    useAlert('Please enter a Typebot ID');
+    return;
+  }
+
+  if (!createdBotId.value) {
+    useAlert('Missing bot ID');
+    return;
+  }
+
+  isSavingConfig.value = true;
+
+  try {
+    // Call backend API to save the typebot_id to Chatwoot's agent_bots table
+    const backendUrl = window.location.hostname === 'localhost' || window.location.hostname.includes('localhost')
+      ? 'http://localhost:5000'
+      : 'https://wizex.tech';
+    
+    const response = await fetch(`${backendUrl}/api/webhooks/bot-config`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        chatwoot_bot_id: createdBotId.value,
+        typebot_id: formState.typebotId.trim(),
+      }),
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      useAlert('Bot configuration saved successfully! You can now assign this bot to an inbox.');
+      dialogRef.value.close();
+    } else {
+      useAlert(result.error || 'Failed to save bot configuration');
+    }
+  } catch (error) {
+    console.error('Error saving bot configuration:', error);
+    useAlert('Failed to save bot configuration. Please try again.');
+  } finally {
+    isSavingConfig.value = false;
   }
 };
 
@@ -311,8 +428,8 @@ defineExpose({ dialogRef });
           id="bot-url"
           v-model="formState.botUrl"
           :label="$t('AGENT_BOTS.FORM.WEBHOOK_URL.LABEL')"
-          :placeholder="$t('AGENT_BOTS.FORM.WEBHOOK_URL.PLACEHOLDER')"
-          :message="botUrlError"
+          :placeholder="'https://wizex.tech/api/webhooks/chatwoot (bot ID will be added automatically)'"
+          :message="botUrlError || 'The bot ID will be appended automatically after creation'"
           :message-type="botUrlError ? 'error' : 'info'"
           @blur="v$.botUrl.$touch()"
         />
@@ -325,6 +442,34 @@ defineExpose({ dialogRef });
         >
           {{ $t('AGENT_BOTS.ACCESS_TOKEN.TITLE') }}
         </label>
+        
+        <!-- Typebot ID Input (shown when access token is displayed after creation) -->
+        <div v-if="showAccessToken && type === MODAL_TYPES.CREATE" class="mb-4">
+          <Input
+            id="typebot-id"
+            v-model="formState.typebotId"
+            label="Typebot ID"
+            placeholder="e.g., lead-generation-x1xxa2r"
+            :message="v$.typebotId.$error ? 'Typebot ID is required to save configuration' : 'Copy this from your Typebot publish page'"
+            :message-type="v$.typebotId.$error ? 'error' : 'info'"
+            @blur="v$.typebotId.$touch()"
+          />
+          <div class="mt-3 p-3 bg-n-slate-2 rounded-md">
+            <p class="text-sm text-n-slate-11 mb-2">
+              <strong>📋 Setup Complete:</strong>
+            </p>
+            <p class="text-xs text-n-slate-11 mb-1">
+              ✅ Bot Created (ID: <code class="px-1 py-0.5 bg-n-slate-3 rounded">{{ createdBotId }}</code>)
+            </p>
+            <p class="text-xs text-n-slate-11 mb-1">
+              ✅ Webhook URL: <code class="px-1 py-0.5 bg-n-slate-3 rounded text-xs">{{ formState.botUrl }}</code>
+            </p>
+            <p class="text-xs text-n-slate-11 mt-3">
+              <strong>📝 Next:</strong> Enter your Typebot ID and click "Save Configuration" to link this bot to your Typebot flow.
+            </p>
+          </div>
+        </div>
+
         <AccessToken
           v-if="type === MODAL_TYPES.EDIT"
           :value="accessToken"
@@ -344,7 +489,7 @@ defineExpose({ dialogRef });
           faded
           slate
           type="reset"
-          :label="$t('AGENT_BOTS.FORM.CANCEL')"
+          :label="showAccessToken ? $t('AGENT_BOTS.FORM.CANCEL') : $t('AGENT_BOTS.FORM.CANCEL')"
           @click="onClickClose()"
         />
         <NextButton
@@ -354,6 +499,14 @@ defineExpose({ dialogRef });
           :label="confirmButtonLabel"
           :is-loading="isLoading"
           :disabled="v$.$invalid"
+        />
+        <NextButton
+          v-else-if="type === MODAL_TYPES.CREATE"
+          type="submit"
+          data-testid="label-save-config"
+          label="Save Configuration"
+          :is-loading="isSavingConfig"
+          :disabled="!formState.typebotId || !formState.typebotId.trim()"
         />
       </div>
     </form>
