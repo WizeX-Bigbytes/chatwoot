@@ -48,10 +48,13 @@ const openTypebotBuilder = async () => {
   try {
     console.log('🤖 Opening Typebot Builder via OAuth...');
     
+    // Get builder URL from config (defaults to localhost for development)
+    const builderURL = window.chatwootConfig?.typebotBuilderURL || 'http://builder.wizex.tech';
+    
     // NextAuth v5: Trigger OAuth flow by navigating to the provider callback
     // This will auto-redirect to the OAuth authorization endpoint
-    const callbackUrl = encodeURIComponent('http://builder.localhost/typebots');
-    const oauthUrl = `http://builder.localhost/api/auth/callback/custom-oauth?callbackUrl=${callbackUrl}`;
+    const callbackUrl = encodeURIComponent(`${builderURL}/typebots`);
+    const oauthUrl = `${builderURL}/api/auth/callback/custom-oauth?callbackUrl=${callbackUrl}`;
     
     console.log('✅ Redirecting to OAuth URL:', oauthUrl);
     
@@ -62,8 +65,9 @@ const openTypebotBuilder = async () => {
     console.error('❌ Error opening Typebot:', error);
     
     // Fallback: open Typebot without SSO
+    const builderURL = window.chatwootConfig?.typebotBuilderURL || 'http://builder.localhost';
     console.log('⚠️ Fallback: Opening Typebot without SSO');
-    window.open('http://builder.localhost', '_blank');
+    window.open(builderURL, '_blank');
   }
 };
 
