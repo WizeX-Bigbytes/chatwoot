@@ -26,9 +26,12 @@ module Whatsapp::IncomingMessageServiceHelpers
 
   def message_content(message)
     # TODO: map interactive messages back to button messages in chatwoot
+    # For list replies, prefer the ID field (contains clean data like ISO dates)
+    # over the title field (which may show display text like "Today (8 Dec)")
     message.dig(:text, :body) ||
       message.dig(:button, :text) ||
       message.dig(:interactive, :button_reply, :title) ||
+      message.dig(:interactive, :list_reply, :id) ||
       message.dig(:interactive, :list_reply, :title) ||
       message.dig(:name, :formatted_name)
   end
